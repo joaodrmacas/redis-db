@@ -1,6 +1,7 @@
 #ifndef __UTILITY_HPP__
 #define __UTILITY_HPP__
 
+#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -14,5 +15,6 @@
 int32_t read_full(int fd,char* buf, size_t n);
 int32_t write_full(int fd, const char* buf, size_t n);
 void die(const char *s);
+void set_fd_nb(int fd);
 
 #endif
