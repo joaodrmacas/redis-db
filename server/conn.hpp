@@ -11,6 +11,7 @@
 #include <netinet/in.h>
 #include <iostream>
 #include <poll.h>
+#include "server.hpp"
 
 enum {
     STATE_REQ = 0,
@@ -32,5 +33,7 @@ typedef struct Conn {
 void connection_io(Conn *conn);
 void conn_put(std::vector<Conn *> &fd2conn, Conn *conn);
 int32_t accept_new_conn(std::vector<Conn *> &fd2conn, int fd);
+void state_res(Conn* conn);
+void state_req(Conn* conn);
 
 #endif

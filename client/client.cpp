@@ -18,7 +18,7 @@ int connect_to_server(){
     return fd;
 }
 
-static int32_t query(int fd, const char *text){
+static int32_t write_req(int fd, const char *text){
 
     uint32_t len = (uint32_t) strlen(text);
 
@@ -27,20 +27,21 @@ static int32_t query(int fd, const char *text){
         return -1;
     }
 
-
     //Write message lenght
     char wbuf[HEADER_LEN + MSG_LEN];
     memcpy(wbuf, &len, HEADER_LEN);
-
 
     //Write message
     memcpy(wbuf + HEADER_LEN, text, len);
     if (int32_t err = write_full(fd,wbuf,4 + len)){
         return err;
     }
+    return 0;
+}
 
+static int32_t read_res(int fd){
     //Read response
-
+    uint32_t len=0;
     char rbuf[HEADER_LEN + MSG_LEN + 1];
     errno = 0;
     int32_t err = read_full(fd, rbuf, HEADER_LEN);
@@ -70,16 +71,42 @@ static int32_t query(int fd, const char *text){
     rbuf[HEADER_LEN + len] = '\0';
     printf("Message: %s\n", rbuf+HEADER_LEN);
     return 0;
-
 }
 
 
 int main(){
 
+    printf("Started\n");
     int fd = connect_to_server();
 
-    int32_t err = query(fd, "Hello1");
+    const char *query_list[3] = {"Hello1", "Hello2", "Hello3"};
+    printf("Started2\n");
+
+
+    for (size_t i = 0; i < 3; i++){
+        int32_t err = write_req(fd, query_list[i]);
+        if (err){
+            goto L_DONE;
+        }
+    }
+
+    printf("Started3\n");
+
+
+    for (size_t i=0; i<3; i++){
+        int32_t err = read_res(fd);
+        if (err){
+            goto L_DONE;
+        }
+    }
+
+    printf("Started4\n");
     
     close(fd);
     
+    
+
+L_DONE:
+    close(fd);
+    return 0;
 }

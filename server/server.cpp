@@ -75,8 +75,50 @@ int handle_request(int fd){
     return write_full(fd, wbuf, HEADER_LEN + len);
 }
 
+bool try_handle_request(Conn* conn){
+
+    //Not enough data on the buffer
+    if (conn->rbuf_size < HEADER_LEN)
+        return false;
+
+    uint32_t len;
+    memcpy(&len, conn->rbuf, HEADER_LEN);
+
+    if (len > MSG_LEN){
+        printf("try_handle_request: message too long\n");
+        conn->state = STATE_END;
+        return false;
+    }
+
+    //Not enough data on the buffer
+    if (conn->rbuf_size < HEADER_LEN + len)
+        return false;
+
+    printf("Message received: %s\n", &conn->rbuf[HEADER_LEN]);
+
+    //Reply with echo
+    memcpy(conn->wbuf, &len, HEADER_LEN);
+    memcpy(conn->wbuf + HEADER_LEN, &conn->rbuf[HEADER_LEN], len);
+    conn->wbuf_size = HEADER_LEN + len;
+
+    size_t remain = conn->rbuf_size - (HEADER_LEN + len);
+    if (remain){
+        memmove(conn->rbuf, &conn->rbuf[HEADER_LEN + len], remain);
+    }
+    conn->rbuf_size = remain;
+
+    conn->state = STATE_RES;
+    state_res(conn);
+
+    //If the the request was succescfully handled, continue the loop.
+    //(When STATE == STATE_REQ then it was successful)
+    return (conn->state == STATE_REQ);
+}
+
 int main(){
     
+
+    printf("Started\n");
     int sv_fd = start_server();
     set_fd_nb(sv_fd);
 

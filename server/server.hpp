@@ -15,7 +15,10 @@
 
 #define TIMEOUT 1000
 
+typedef struct Conn Conn;
+
 int start_server();
 int handle_request(int fd);
+bool try_handle_request(Conn* conn);
 
 #endif
