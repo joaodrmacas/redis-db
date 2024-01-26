@@ -59,7 +59,6 @@ bool try_handle_request(Conn* conn){
     if (conn->rbuf_size < HEADER_LEN + len)
         return false;
 
-    printf("Message received: %s\n", &conn->rbuf[HEADER_LEN]);
 
     //Reply
 
@@ -92,7 +91,7 @@ bool try_handle_request(Conn* conn){
     return (conn->state == STATE_REQ);
 }
 
-int32_t do_request(const uint8_t *req, uint32_t reqlen, uint8_t *res ,uint32_t *rescode, uint32_t reslen){
+int32_t do_request(const uint8_t *req, uint32_t reqlen, uint8_t *res ,uint32_t *rescode, uint32_t *reslen){
 
     //vector with each argument of the request
     std::vector<std::string> cmd;
@@ -103,20 +102,21 @@ int32_t do_request(const uint8_t *req, uint32_t reqlen, uint8_t *res ,uint32_t *
     }
 
     if (cmd.size() == 2 && (cmd[0] == "GET" || cmd[0] == "get")){
-        *rescode = get_cmd();
+        *rescode = get_cmd(cmd,res,reslen);
     }
     else if (cmd.size() == 3 && (cmd[0] == "SET" || cmd[0] == "set")){
-        *rescode = set_cmd();
+        *rescode = set_cmd(cmd,res,reslen);
     }
-    else if (cmd.size() == 1 && (cmd[0] == "DEL" || cmd[0] == "del")){
-        *rescode = del_cmd();
+    else if (cmd.size() == 2 && (cmd[0] == "DEL" || cmd[0] == "del")){
+        printf("DELLLL\n");
+        *rescode = del_cmd(cmd,res,reslen);
     }
     else{
         //Unknown command
         *rescode = RES_ERR;
         const char *msg = "Unknown command\n";
         strcpy((char *)res,msg);
-        reslen = strlen(msg);
+        *reslen = (uint32_t) strlen(msg);
         return 0;
     }
 
@@ -128,7 +128,7 @@ int32_t parse_req(const uint8_t *data,size_t len, std::vector<std::string> &out)
     //len is the length of the full request
 
     if (len < HEADER_LEN){
-        printf("parse_req: message too short\n")
+        printf("parse_req: message too short\n");
         return -1;
     }
 
@@ -160,12 +160,12 @@ int32_t parse_req(const uint8_t *data,size_t len, std::vector<std::string> &out)
             return -1;
         }
 
-        out.push_back(std::string(&data[point],arg_len));
-        pos += HEADER_LEN + arg_len;
+        out.push_back(std::string((char*) &data[point+HEADER_LEN],arg_len));
+        point += HEADER_LEN + arg_len;
         n--;
     }
 
-    if (pos != len){
+    if (point != len){
         printf("parse_req: req badly formatted\n");
         return -1;
     }

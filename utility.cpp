@@ -28,7 +28,6 @@ int32_t write_full(int fd, const char* buf, size_t n){
     return 0;
 }
 
-
 void die(const char *s) {
     perror(s);
     exit(EXIT_FAILURE);

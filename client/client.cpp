@@ -18,9 +18,13 @@ int connect_to_server(){
     return fd;
 }
 
-static int32_t write_req(int fd, const char *text){
+static int32_t write_req(int fd, const std::vector<std::string> &cmd){
 
-    uint32_t len = (uint32_t) strlen(text);
+    uint32_t len = 4;
+
+    for (const std::string &s : cmd){
+        len += 4 + s.size();
+    }
 
     if (len > MSG_LEN){
         printf("Message too long\n");
@@ -30,18 +34,22 @@ static int32_t write_req(int fd, const char *text){
     //Write message lenght
     char wbuf[HEADER_LEN + MSG_LEN];
     memcpy(wbuf, &len, HEADER_LEN);
+    uint32_t n = cmd.size();
+    memcpy(wbuf + HEADER_LEN, &n, HEADER_LEN);
 
-    //Write message
-    memcpy(wbuf + HEADER_LEN, text, len);
-    if (int32_t err = write_full(fd,wbuf,4 + len)){
-        return err;
+    size_t cur = 8;
+    for (const std::string &s : cmd){
+        uint32_t p = (uint32_t) s.size();
+        memcpy(wbuf + cur, &p, HEADER_LEN);
+        memcpy(wbuf + cur + HEADER_LEN, s.data(), s.size());
+        cur += HEADER_LEN + s.size();
     }
-    return 0;
+    
+    return write_full(fd, wbuf, len + HEADER_LEN);
 }
 
 static int32_t read_res(int fd){
     //Read response
-    uint32_t len=0;
     char rbuf[HEADER_LEN + MSG_LEN + 1];
     errno = 0;
     int32_t err = read_full(fd, rbuf, HEADER_LEN);
@@ -55,6 +63,7 @@ static int32_t read_res(int fd){
         return err;
     }
 
+    uint32_t len=0;
     //Copy the first bytes for len
     memcpy(&len,rbuf,HEADER_LEN);
     if (len > MSG_LEN){
@@ -68,42 +77,36 @@ static int32_t read_res(int fd){
         return err;
     }
 
+    uint32_t rescode = 0;
+    if (len < 4){
+        printf("message too short\n");
+        return -1;
+    }
+
+    memcpy(&rescode, rbuf+HEADER_LEN, HEADER_LEN);
+
     rbuf[HEADER_LEN + len] = '\0';
-    printf("Message: %s\n", rbuf+HEADER_LEN);
+    printf("Message: [%u] %s\n", rescode, rbuf+HEADER_LEN+HEADER_LEN);
     return 0;
 }
 
 
-int main(){
+int main(int argc, char **argv){
 
-    printf("Started\n");
     int fd = connect_to_server();
 
-    const char *query_list[3] = {"Hello1", "Hello2", "Hello3"};
-    printf("Started2\n");
-
-
-    for (size_t i = 0; i < 3; i++){
-        int32_t err = write_req(fd, query_list[i]);
-        if (err){
-            goto L_DONE;
-        }
+    std::vector<std::string> cmd;
+    for (int i = 1; i < argc; ++i) {
+        cmd.push_back(argv[i]);
     }
-
-    printf("Started3\n");
-
-
-    for (size_t i=0; i<3; i++){
-        int32_t err = read_res(fd);
-        if (err){
-            goto L_DONE;
-        }
+    int32_t err = write_req(fd, cmd);
+    if (err) {
+        goto L_DONE;
     }
-
-    printf("Started4\n");
-    
-    close(fd);
-    
+    err = read_res(fd);
+    if (err) {
+        goto L_DONE;
+    }
     
 
 L_DONE:
