@@ -1,5 +1,21 @@
 #include "server.hpp"
 
+/* TODO
+
+ - Try to use epoll instead of poll in the event loop. This should be easy.
+
+ - We are using memmove to reclaim read buffer space. 
+However, memmove on every request is unnecessary, 
+change the code the perform memmove only before read.
+
+ - In the state_res function, write was performed for a single response.
+ In pipelined sceneries, we could buffer multiple responses
+ and flush them in the end with a single write call. 
+ Note that the write buffer could be full in the middle.
+
+*/
+
+
 int start_server(){
 
     int fd = socket(AF_INET, SOCK_STREAM, 0);
@@ -45,10 +61,22 @@ bool try_handle_request(Conn* conn){
 
     printf("Message received: %s\n", &conn->rbuf[HEADER_LEN]);
 
-    //Reply with echo
-    memcpy(conn->wbuf, &len, HEADER_LEN);
-    memcpy(conn->wbuf + HEADER_LEN, &conn->rbuf[HEADER_LEN], len);
-    conn->wbuf_size = HEADER_LEN + len;
+    //Reply
+
+    uint32_t rescode = 0;
+    uint32_t reslen = 0;
+    int32_t err = do_request(&conn->rbuf[HEADER_LEN],len,&conn->wbuf[HEADER_LEN+HEADER_LEN],&rescode,&reslen);
+
+    if (err){
+        printf("try_handle_request: do_request failed\n");
+        conn->state = STATE_END;
+        return -1;
+    }
+
+    reslen += HEADER_LEN;
+    memcpy(&conn->wbuf[0], &reslen, HEADER_LEN);
+    memcpy(&conn->wbuf[HEADER_LEN], &rescode, HEADER_LEN);
+    conn->wbuf_size = reslen + HEADER_LEN;
 
     size_t remain = conn->rbuf_size - (HEADER_LEN + len);
     if (remain){
@@ -64,10 +92,90 @@ bool try_handle_request(Conn* conn){
     return (conn->state == STATE_REQ);
 }
 
+int32_t do_request(const uint8_t *req, uint32_t reqlen, uint8_t *res ,uint32_t *rescode, uint32_t reslen){
+
+    //vector with each argument of the request
+    std::vector<std::string> cmd;
+
+    if (parse_req(req,reqlen,cmd) != 0){
+        printf("do_request: request with bad format\n");
+        return -1;
+    }
+
+    if (cmd.size() == 2 && (cmd[0] == "GET" || cmd[0] == "get")){
+        *rescode = get_cmd();
+    }
+    else if (cmd.size() == 3 && (cmd[0] == "SET" || cmd[0] == "set")){
+        *rescode = set_cmd();
+    }
+    else if (cmd.size() == 1 && (cmd[0] == "DEL" || cmd[0] == "del")){
+        *rescode = del_cmd();
+    }
+    else{
+        //Unknown command
+        *rescode = RES_ERR;
+        const char *msg = "Unknown command\n";
+        strcpy((char *)res,msg);
+        reslen = strlen(msg);
+        return 0;
+    }
+
+    return 0;
+}
+
+int32_t parse_req(const uint8_t *data,size_t len, std::vector<std::string> &out){
+    
+    //len is the length of the full request
+
+    if (len < HEADER_LEN){
+        printf("parse_req: message too short\n")
+        return -1;
+    }
+
+    //Get the number of arguments
+    uint32_t n = 0;
+    memcpy(&n,data,HEADER_LEN);
+
+    if (n > MSG_LEN){
+        printf("parse_req: message too long\n");
+        return -1;
+    }
+
+    size_t point = 4;
+
+
+    //Get the args as strings into the vector
+    while(n > 0){
+        if (point + HEADER_LEN > len){
+            printf("parse_req: message too long\n");
+            return -1;
+        }
+
+        //Get the lengh of the argument
+        uint32_t arg_len = 0;
+        memcpy(&arg_len, &data[point], HEADER_LEN);
+
+        if (arg_len + point + HEADER_LEN > len){
+            printf("parse_req: message too long\n");
+            return -1;
+        }
+
+        out.push_back(std::string(&data[point],arg_len));
+        pos += HEADER_LEN + arg_len;
+        n--;
+    }
+
+    if (pos != len){
+        printf("parse_req: req badly formatted\n");
+        return -1;
+    }
+
+    return 0;
+
+}
+
 int main(){
     
-
-    printf("Started\n");
     int sv_fd = start_server();
     set_fd_nb(sv_fd);
 

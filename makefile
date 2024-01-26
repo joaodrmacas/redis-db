@@ -5,7 +5,7 @@ SRC_USER = client/client.cpp utility.cpp
 OBJ_USR = $(SRC_USER:.cpp=.o)
 TARGET_USER = cliente
 
-SRC_SV = server/server.cpp server/conn.cpp utility.cpp
+SRC_SV = server/server.cpp server/conn.cpp server/req.cpp utility.cpp
 OBJ_SV = $(SRC_SV:.cpp=.o)
 TARGET_SV = servidor
 
