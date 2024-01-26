@@ -24,57 +24,6 @@ int start_server(){
     return fd;
 }
 
-int handle_request(int fd){
-
-    printf("Handling request...\n");
-
-    char rbuf[HEADER_LEN + MSG_LEN + 1];
-    errno = 0;
-    uint32_t len = 0;
-
-
-    //Read message header
-    int32_t err = read_full(fd, rbuf, HEADER_LEN);
-
-    if (err<0) {
-        if (errno == 0){
-            printf("EOF\n");
-        }
-        else {
-            printf("read error\n");
-        }
-        return err;
-    }
-
-    //Copy the first bytes for len
-    memcpy(&len,rbuf,HEADER_LEN);
-    printf("Length: %d | ", len);
-
-    if (len > MSG_LEN){
-        printf("message too long\n");
-        return -1;
-    }
-
-    err = read_full(fd, rbuf, len);
-    if (err){
-        printf("read error\n");
-        return err;
-    }
-
-    rbuf[HEADER_LEN + len] = '\0';
-    printf("Message: %s |\n\n", rbuf);
-
-    //Reply
-
-    const char reply[] = "World";
-    char wbuf[HEADER_LEN + sizeof(reply) + 1];
-    len = (uint32_t) sizeof(reply);
-
-    memcpy(wbuf, &len, HEADER_LEN);
-    memcpy(&wbuf[HEADER_LEN], reply, len);
-    return write_full(fd, wbuf, HEADER_LEN + len);
-}
-
 bool try_handle_request(Conn* conn){
 
     //Not enough data on the buffer
@@ -161,6 +110,7 @@ int main(){
         //Process active connections
         for (size_t i = 1; i<poll_args.size(); ++i){
 
+            //poll revents is a output filled by kernel with the events that happened
             if (poll_args[i].revents){
                 Conn *conn = fd2conn[poll_args[i].fd];
                 connection_io(conn);
@@ -172,6 +122,7 @@ int main(){
             }
         }
 
+        //If the server had any events, then someone tried to connect
         if (poll_args[0].revents) {
             accept_new_conn(fd2conn,sv_fd);
         }
