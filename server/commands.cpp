@@ -21,7 +21,7 @@ static bool entry_eq(Node* n1, Node* n2){
     return left->key == right->key;
 }
 
-uint32_t get_cmd(const std::vector<std::string> &cmd, uint8_t *res, uint32_t *reslen){
+void get_cmd(const std::vector<std::string> &cmd, std::string &out){
 
     printf("Performing get\n");
 
@@ -33,27 +33,22 @@ uint32_t get_cmd(const std::vector<std::string> &cmd, uint8_t *res, uint32_t *re
 
     if (!node){
         printf("get_cmd: key not found\n");
-        return RES_NOK;
+        return out_err(out,ERR_KEY_NOT_EXIST,"Key not found");
     }
 
     std::string &val = container_of(node,Entry,node)->value;
 
     if (val.size() > MSG_LEN){
         printf("get_cmd: value too long\n");
-        return RES_ERR;
+        return out_err(out,ERR_2BIG,"Value too long");
     }
 
-    memcpy(res,val.c_str(),val.size());
-    *reslen = (uint32_t) val.size();
-    return RES_OK;
+    out_str(out,val);
 } 
 
-uint32_t set_cmd(const std::vector<std::string> &cmd, uint8_t *res, uint32_t *reslen){
+void set_cmd(const std::vector<std::string> &cmd,  std::string &out){
 
     printf("Performing set\n");
-    
-    (void) res;
-    (void) reslen;
     
     Entry key;
     key.key = cmd[1];
@@ -64,9 +59,7 @@ uint32_t set_cmd(const std::vector<std::string> &cmd, uint8_t *res, uint32_t *re
 
     if (node){
         printf("set_cmd: key already exists\n");
-        memcpy(res,"Key already exists",18);
-        *reslen = 18;
-        return RES_NOK;
+        return out_err(out,ERR_KEY_EXIST,"Key already exists");
     }
 
 
@@ -77,28 +70,22 @@ uint32_t set_cmd(const std::vector<std::string> &cmd, uint8_t *res, uint32_t *re
 
     hashmap_insert(&db, &entry->node);
 
-    return RES_OK;
+    return out_nil(out);
 } 
 
-uint32_t del_cmd(const std::vector<std::string> &cmd, uint8_t *res, uint32_t *reslen){
+void del_cmd(const std::vector<std::string> &cmd,  std::string &out){
 
     printf("Performing del\n");
     
-    (void) res;
-    (void) reslen;
-
     Entry key;
     key.key = cmd[1];
     key.node.hash_value = str_hash((uint8_t *)key.key.data(), key.key.size());
 
     Node *node = hashmap_delete(&db, &key.node,entry_eq);
     if (!node){
-        printf("del_cmd: key not found\n");
-        memcpy(res,"Key not found",13);
-        *reslen = 13;
-        return RES_NOK;
+        return out_err(out,ERR_KEY_NOT_EXIST,"Key not found");
     }
 
     delete container_of(node,Entry,node);
-    return RES_OK;
+    return out_int(out, node ? 1 : 0);
 } 

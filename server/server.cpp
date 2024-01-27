@@ -39,6 +39,41 @@ int start_server(){
     return fd;
 }
 
+void do_request(std::vector<std::string> &cmd, std::string &out){
+
+    if (cmd[0] == "GET" || cmd[0] == "get"){
+        if (cmd.size() == 2)
+            get_cmd(cmd,out);
+        else {
+            out_err(out,ERR_ARGS,"Wrong number of arguments");
+            return;
+        }
+    }
+    else if (cmd[0] == "SET" || cmd[0] == "set"){
+        if (cmd.size() == 3)
+            set_cmd(cmd,out);
+        else {
+            out_err(out,ERR_ARGS,"Wrong number of arguments");
+            return;
+        }
+
+    }
+    else if (cmd[0] == "DEL" || cmd[0] == "del"){
+        if (cmd.size() == 2)
+            del_cmd(cmd,out);
+        else {
+            out_err(out,ERR_ARGS,"Wrong number of arguments");
+            return;
+        }
+    }
+    else{
+        //Unknown command
+        out_err(out,ERR_UNK,"Unknown command");
+        return;
+    }
+
+}
+
 bool try_handle_request(Conn* conn){
 
     //Not enough data on the buffer
@@ -58,23 +93,30 @@ bool try_handle_request(Conn* conn){
     if (conn->rbuf_size < HEADER_LEN + len)
         return false;
 
+    //Handle the request
 
-    //Reply
+    std::vector<std::string> cmd;
+    std::string out;
 
-    uint32_t rescode = 0;
-    uint32_t reslen = 0;
-    int32_t err = do_request(&conn->rbuf[HEADER_LEN],len,&conn->wbuf[HEADER_LEN+HEADER_LEN],&rescode,&reslen);
-
-    if (err){
-        printf("try_handle_request: do_request failed\n");
+    if (parse_req(&conn->rbuf[HEADER_LEN],len,cmd) != 0){
+        printf("do_request: request with bad format\n");
         conn->state = STATE_END;
-        return -1;
+        return false;
     }
 
-    reslen += HEADER_LEN;
-    memcpy(&conn->wbuf[0], &reslen, HEADER_LEN);
-    memcpy(&conn->wbuf[HEADER_LEN], &rescode, HEADER_LEN);
-    conn->wbuf_size = reslen + HEADER_LEN;
+    do_request(cmd,out);
+
+    if (HEADER_LEN + out.size() > MSG_LEN){
+        printf("do_request: response too long\n");
+        out.clear();
+        out_err(out,ERR_2BIG,"Response too long");
+    }
+
+    //Reply
+    uint32_t res_len = (uint32_t) out.size();
+    memcpy(&conn->wbuf[0], &res_len, HEADER_LEN);
+    memcpy(&conn->wbuf[HEADER_LEN], out.data(), out.size());
+    conn->wbuf_size = out.size() + HEADER_LEN;
 
     size_t remain = conn->rbuf_size - (HEADER_LEN + len);
     if (remain){
@@ -90,67 +132,8 @@ bool try_handle_request(Conn* conn){
     return (conn->state == STATE_REQ);
 }
 
-int32_t do_request(const uint8_t *req, uint32_t reqlen, uint8_t *res ,uint32_t *rescode, uint32_t *reslen){
 
-    //vector with each argument of the request
-    std::vector<std::string> cmd;
-
-    if (parse_req(req,reqlen,cmd) != 0){
-        printf("do_request: request with bad format\n");
-        return -1;
-    }
-
-    if (cmd[0] == "GET" || cmd[0] == "get"){
-        if (cmd.size() == 2)
-            *rescode = get_cmd(cmd,res,reslen);
-        else {
-            //Wrong number of arguments
-            *rescode = RES_ERR;
-            const char *msg = "Wrong number of arguments";
-            strcpy((char *)res,msg);
-            *reslen = (uint32_t) strlen(msg);
-            return 0;
-        }
-    }
-    else if (cmd[0] == "SET" || cmd[0] == "set"){
-        if (cmd.size() == 3)
-            *rescode = set_cmd(cmd,res,reslen);
-        else {
-            //Wrong number of arguments
-            *rescode = RES_ERR;
-            const char *msg = "Wrong number of arguments";
-            strcpy((char *)res,msg);
-            *reslen = (uint32_t) strlen(msg);
-            return 0;
-        }
-
-    }
-    else if (cmd[0] == "DEL" || cmd[0] == "del"){
-        if (cmd.size() == 2)
-            *rescode = del_cmd(cmd,res,reslen);
-        else {
-            //Wrong number of arguments
-            *rescode = RES_ERR;
-            const char *msg = "Wrong number of arguments";
-            strcpy((char *)res,msg);
-            *reslen = (uint32_t) strlen(msg);
-            return 0;
-        
-        }
-    }
-    else{
-        //Unknown command
-        *rescode = RES_ERR;
-        const char *msg = "Unknown command";
-        strcpy((char *)res,msg);
-        *reslen = (uint32_t) strlen(msg);
-        return 0;
-    }
-
-    return 0;
-}
-
-int32_t parse_req(const uint8_t *data,size_t len, std::vector<std::string> &out){
+int32_t parse_req(const uint8_t *data,size_t len, std::vector<std::string> &cmd){
     
     //len is the length of the full request
 
@@ -187,7 +170,7 @@ int32_t parse_req(const uint8_t *data,size_t len, std::vector<std::string> &out)
             return -1;
         }
 
-        out.push_back(std::string((char*) &data[point+HEADER_LEN],arg_len));
+        cmd.push_back(std::string((char*) &data[point+HEADER_LEN],arg_len));
         point += HEADER_LEN + arg_len;
         n--;
     }
