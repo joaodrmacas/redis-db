@@ -66,6 +66,14 @@ void do_request(std::vector<std::string> &cmd, std::string &out){
             return;
         }
     }
+    else if (cmd[0] == "KEYS" || cmd[0] == "keys"){
+        if (cmd.size()==1)
+            keys_cmd(cmd,out);
+        else {
+            out_err(out,ERR_ARGS,"Wrong number of arguments");
+            return;
+        }
+    }
     else{
         //Unknown command
         out_err(out,ERR_UNK,"Unknown command");

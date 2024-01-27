@@ -169,6 +169,30 @@ Node* hashmap_delete(HashMap *hm, Node *key, bool (*eq) (Node*, Node*)){
 
 }
 
+static void hashtable_scan(HashTable *ht, void (*func) (Node* , void* ), void *out){
+    if (ht->cur_size == 0)
+        return;
+    
+    for (size_t t=0; t<ht->mask+1;t++){
+        Node *cur = ht->table[t];
+        while(cur){
+            func(cur,out);
+            cur = cur->next;
+        }
+    }
+}
+
+void hashmap_scan(HashMap *hm, void (*func) (Node* , void* ), void *out){
+
+    if (!hm->t1.table){
+        printf("hashmap_scan: hashmap not initialized\n");
+        return;
+    }
+
+    hashtable_scan(&hm->t1, func, out);
+    hashtable_scan(&hm->t2, func, out);
+}
+
 void hashmap_destroy(HashMap *hm){
 
     if (hm->t1.table){
@@ -184,4 +208,6 @@ void hashmap_destroy(HashMap *hm){
     *hm = HashMap{};
 }
 
-
+uint32_t hashmap_total_size(HashMap *hm){
+    return hm->t1.cur_size + hm->t2.cur_size;
+}

@@ -1,13 +1,5 @@
 #include "server.hpp"
 
-enum {
-    SER_NIL = 0, //NULL
-    SER_ERR = 1, //Error
-    SER_STR = 2, //OK
-    SER_INT = 3, //Integer 64bits
-    SER_ARR = 4, //Array
-};
-
 void out_nil(std::string &out){
     out.push_back(SER_NIL);
 }

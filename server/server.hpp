@@ -42,6 +42,7 @@ int32_t parse_req(const uint8_t *data,size_t len, std::vector<std::string> &cmd)
 void get_cmd(const std::vector<std::string> &cmd, std::string &out);
 void set_cmd(const std::vector<std::string> &cmd, std::string &out);
 void del_cmd(const std::vector<std::string> &cmd, std::string &out);
+void keys_cmd(const std::vector<std::string> &cmd,  std::string &out);
 
 void out_nil(std::string &out);
 void out_err( std::string &out, int32_t code ,const std::string &msg);

@@ -52,6 +52,8 @@ typedef struct HashMap {
 void hashmap_insert(HashMap *hm, Node *node);
 Node* hashmap_lookup(HashMap *hm, Node *key, bool (*eq) (Node*, Node*));
 Node* hashmap_delete(HashMap *hm, Node *key, bool (*eq) (Node*, Node*));
+void hashmap_scan(HashMap *hm, void (*func) (Node* , void* ), void *arg);
+uint32_t hashmap_total_size(HashMap *hm);
 void hashmap_destroy(HashMap *hm);
 
 

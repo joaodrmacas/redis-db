@@ -88,4 +88,18 @@ void del_cmd(const std::vector<std::string> &cmd,  std::string &out){
 
     delete container_of(node,Entry,node);
     return out_int(out, node ? 1 : 0);
-} 
+}
+
+void keys_scan(Node* node, void *arg){
+    std::string &out = *(std::string*)arg;
+    Entry *entry = container_of(node,Entry,node);
+    out_str(out,entry->key);
+}
+
+void keys_cmd(const std::vector<std::string> &cmd,  std::string &out){
+
+    printf("Performing keys\n");
+
+    out_arr(out,hashmap_total_size(&db));
+    hashmap_scan(&db,&keys_scan,&out);
+}
