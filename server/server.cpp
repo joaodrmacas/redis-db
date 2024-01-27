@@ -15,7 +15,6 @@ change the code the perform memmove only before read.
 
 */
 
-
 int start_server(){
 
     int fd = socket(AF_INET, SOCK_STREAM, 0);
@@ -101,20 +100,48 @@ int32_t do_request(const uint8_t *req, uint32_t reqlen, uint8_t *res ,uint32_t *
         return -1;
     }
 
-    if (cmd.size() == 2 && (cmd[0] == "GET" || cmd[0] == "get")){
-        *rescode = get_cmd(cmd,res,reslen);
+    if (cmd[0] == "GET" || cmd[0] == "get"){
+        if (cmd.size() == 2)
+            *rescode = get_cmd(cmd,res,reslen);
+        else {
+            //Wrong number of arguments
+            *rescode = RES_ERR;
+            const char *msg = "Wrong number of arguments";
+            strcpy((char *)res,msg);
+            *reslen = (uint32_t) strlen(msg);
+            return 0;
+        }
     }
-    else if (cmd.size() == 3 && (cmd[0] == "SET" || cmd[0] == "set")){
-        *rescode = set_cmd(cmd,res,reslen);
+    else if (cmd[0] == "SET" || cmd[0] == "set"){
+        if (cmd.size() == 3)
+            *rescode = set_cmd(cmd,res,reslen);
+        else {
+            //Wrong number of arguments
+            *rescode = RES_ERR;
+            const char *msg = "Wrong number of arguments";
+            strcpy((char *)res,msg);
+            *reslen = (uint32_t) strlen(msg);
+            return 0;
+        }
+
     }
-    else if (cmd.size() == 2 && (cmd[0] == "DEL" || cmd[0] == "del")){
-        printf("DELLLL\n");
-        *rescode = del_cmd(cmd,res,reslen);
+    else if (cmd[0] == "DEL" || cmd[0] == "del"){
+        if (cmd.size() == 2)
+            *rescode = del_cmd(cmd,res,reslen);
+        else {
+            //Wrong number of arguments
+            *rescode = RES_ERR;
+            const char *msg = "Wrong number of arguments";
+            strcpy((char *)res,msg);
+            *reslen = (uint32_t) strlen(msg);
+            return 0;
+        
+        }
     }
     else{
         //Unknown command
         *rescode = RES_ERR;
-        const char *msg = "Unknown command\n";
+        const char *msg = "Unknown command";
         strcpy((char *)res,msg);
         *reslen = (uint32_t) strlen(msg);
         return 0;

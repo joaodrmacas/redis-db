@@ -77,9 +77,6 @@ static bool try_read(Conn *conn){
         if (conn->rbuf_size > 0){
             printf("try_read: unexpected EOF\n");
         }
-        else {
-            printf("try_read: EOF\n");
-        }
         conn->state = STATE_END;
         return false;
     }
