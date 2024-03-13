@@ -9,6 +9,8 @@ SRC_SV = server/server.cpp server/conn.cpp server/commands.cpp server/output.cpp
 OBJ_SV = $(SRC_SV:.cpp=.o)
 TARGET_SV = servidor
 
+CLIENT_ARGS = arg1 arg2 arg3
+
 .PHONY: all clean run_client run_server
 
 all: $(TARGET_USER) $(TARGET_SV)
@@ -26,7 +28,8 @@ clean:
 	rm -f $(OBJ_USR) $(OBJ_SV) $(TARGET_USER) $(TARGET_SV)
 
 run_client: $(TARGET_USER)
-	./$(TARGET_USER)
+	./$(TARGET_USER) $(filter-out $@,$(MAKECMDGOALS))
 
 run_server: $(TARGET_SV)
 	./$(TARGET_SV)
+
