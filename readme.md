@@ -46,7 +46,7 @@ keys command lists all the current keys stored in the database at the moment. It
 
 This redis like database is a simplified version of the original **redis-db** with the goal of having an in memory database for rapid access on stored data.
 
-### **This project is still in development, therefore it doesn't have all the functionalities I want.**
+**This project is still in development, therefore it doesn't have all the functionalities I want.**
 
 ---
 
